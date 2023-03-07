@@ -88,48 +88,6 @@ def voring(x, y, z, i, j, gd, gamma=1):
     return U  # , Ustar
 
 
-def hshoe(x, y, z, i, j, gd, gamma=1):
-    """Vorticity Horseshow Element. Computes the velocities induced at a point x,y,z 
-    by a horseshow Vortex given its grid lower corner coordinates 
-
-    Args:
-        x: x coordinate of point 
-        y: y coordinate of point 
-        z: z coordinate of point 
-        i: specifies i index of grid (gd[i,j])
-        j: specifies j index of grid (gd[i,j])
-        gd: grid of geometry
-        gamma: Circulation. Defaults to 1 (When we use nondimensional solve).
-
-    Returns:
-        U: induced velocities vector
-    """
-    u1, v1, w1 = vortexL(x, y, z,
-                         gd[0, i+1, j], gd[1, i + 1, j], gd[2, i+1, j],
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
-                         gamma)
-    u2, v2, w2 = vortexL(x, y, z,
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
-                         gamma)
-    u3, v3, w3 = vortexL(x, y, z,
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
-                         gd[0, i+1, j+1], gd[1, i + 1, j+1], gd[2, i+1, j+1],
-                         gamma)
-
-    u = u1 + u2 + u3
-    v = v1 + v2 + v3
-    w = w1 + w2 + w3
-
-    ustar = u1 + u3
-    vstar = v1 + v3
-    wstar = w1 + w3
-
-    U = np.array((u, v, w))
-    Ustar = np.array((ustar, vstar, wstar))
-    return U, Ustar
-
-
 def hshoe2(x, y, z, j, k, gd, gamma=1):
     """Vorticity Horseshow Element. Computes the velocities induced at a point x,y,z
     by a horseshow Vortex given its grid lower corner coordinates
@@ -167,69 +125,20 @@ def hshoe2(x, y, z, j, k, gd, gamma=1):
     return U
 
 
-def hshoeSL(x, y, z, i, j, gd, gamma=1):
-    """Slanted Horseshoe Element
-
-    Args:
-        x: _description_
-        y: _description_
-        z: _description_
-        i: _description_
-        j: _description_
-        gd: _description_
-        gamma (int, optional): _description_. Defaults to 1.
-
-    Returns:
-        _type_: _description_
-    """
-    u1, v1, w1 = vortexL(x, y, z,
-                         gd[0, i+2, j], gd[1, i+2, j], gd[2, i+2, j],
-                         gd[0, i+1, j], gd[1, i+1, j], gd[2, i+1, j],
-                         gamma)
-    u2, v2, w2 = vortexL(x, y, z,
-                         gd[0, i+1, j], gd[1, i+1, j], gd[2, i+1, j],
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
-                         gamma)
-    u3, v3, w3 = vortexL(x, y, z,
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
-                         gamma)
-    u4, v4, w4 = vortexL(x, y, z,
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
-                         gd[0, i+1, j+1], gd[1, i + 1, j+1], gd[2, i+1, j+1],
-                         gamma)
-    u5, v5, w5 = vortexL(x, y, z,
-                         gd[0, i+1, j+1], gd[1, i + 1, j+1], gd[2, i+1, j+1],
-                         gd[0, i+2, j+1], gd[1, i + 2, j+1], gd[2, i+2, j+1],
-                         gamma)
-
-    u = u1 + u2 + u3 + u4 + u5
-    v = v1 + v2 + v3 + v4 + v5
-    w = w1 + w2 + w3 + w4 + w5
-
-    ustar = u1 + u2 + u4 + u5
-    vstar = v1 + v2 + v4 + v5
-    wstar = w1 + w2 + w4 + w5
-
-    U = np.array((u, v, w))
-    Ustar = np.array((ustar, vstar, wstar))
-    return U, Ustar
-
-
 def hshoeSL2(x, y, z, i, j, gd, gamma=1):
     """Slanted Horseshoe Element To Work with Panels
 
     Args:
-        x : _description_
-        y : _description_
-        z : _description_
-        i : _description_
-        j : _description_
-        gd: _description_
-        gamma (int, optional): _description_. Defaults to 1.
+        x: x coordinate of point
+        y: y coordinate of point
+        z: z coordinate of point
+        i: specifies i index of grid (gd[i,j])
+        j: specifies j index of grid (gd[i,j])
+        gd: grid of geometry
+        gamma: Circulation. Defaults to 1 (When we use nondimensional solve).
 
     Returns:
-        _type_: _description_
+        U: induced velocities vector
     """
     u1, v1, w1 = vortexL(x, y, z,
                          gd[j, i+2, 0], gd[j, i+2, 1], gd[j, i+2, 2],
