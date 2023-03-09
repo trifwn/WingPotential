@@ -27,6 +27,7 @@ def vortexL(xp, yp, zp, x1, y1, z1, x2, y2, z2, gamma):
     cross_mag = crossx**2 + crossy**2 + crossz**2
     r1 = np.sqrt((xp-x1)**2 + (yp-y1)**2 + (zp-z1)**2)
     r2 = np.sqrt((xp-x2)**2 + (yp-y2)**2 + (zp-z2)**2)
+    r0 = np.sqrt((x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2)
 
     e = 1e-9
     if (r1 < e or r2 < e or cross_mag < e):
@@ -34,7 +35,10 @@ def vortexL(xp, yp, zp, x1, y1, z1, x2, y2, z2, gamma):
     r0dr1 = (x2-x1)*(xp - x1) + (y2 - y1)*(yp-y1) + (z2-z1)*(zp-z1)
     r0dr2 = (x2-x1)*(xp - x2) + (y2 - y1)*(yp-y2) + (z2-z1)*(zp-z2)
 
-    K = (gamma / (4 * np.pi * cross_mag)) * (r0dr1/r1 - r0dr2/r2)
+    epsilon = 0.0001
+    d = cross_mag / r0
+    filt = 1  # - np.exp(-(d/epsilon)**2)
+    K = filt*(gamma / (4 * np.pi * cross_mag)) * (r0dr1/r1 - r0dr2/r2)
     u = K * crossx
     v = K * crossy
     w = K * crossz
@@ -42,7 +46,7 @@ def vortexL(xp, yp, zp, x1, y1, z1, x2, y2, z2, gamma):
     return u, v, w
 
 
-def voring(x, y, z, i, j, gd, gamma=1):
+def voring(x, y, z, j, k, gd, gamma=1):
     """Vorticity Ring Element. Computes the velocities induced at a point x,y,z 
     by a vortex ring given its grid lower corner coordinates 
 
@@ -50,8 +54,8 @@ def voring(x, y, z, i, j, gd, gamma=1):
         x: x coordinate of point 
         y: y coordinate of point 
         z: z coordinate of point 
-        i: specifies i index of grid (gd[i,j])
-        j: specifies j index of grid (gd[i,j])
+        j: specifies i index of grid (gd[j,k])
+        k: specifies j index of grid (gd[j,k])
         gd: grid of geometry
         gamma: Circulation. Defaults to 1 (When we use nondimensional solve).
 
@@ -59,20 +63,21 @@ def voring(x, y, z, i, j, gd, gamma=1):
         U: induced velocities vector
     """
     u1, v1, w1 = vortexL(x, y, z,
-                         gd[0, i+1, j], gd[1, i+1, j], gd[2, i+1, j],
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
+                         gd[j, k+1, 0], gd[j, k+1, 1], gd[j, k+1, 2],
+                         gd[j, k, 0], gd[j, k, 1], gd[j, k, 2],
                          gamma)
+
     u2, v2, w2 = vortexL(x, y, z,
-                         gd[0, i, j], gd[1, i, j], gd[2, i, j],
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
+                         gd[j, k, 0], gd[j, k, 1], gd[j, k, 2],
+                         gd[j+1, k, 0], gd[j+1, k, 1], gd[j+1, k, 2],
                          gamma)
     u3, v3, w3 = vortexL(x, y, z,
-                         gd[0, i, j+1], gd[1, i, j+1], gd[2, i, j+1],
-                         gd[0, i+1, j+1], gd[1, i + 1, j+1], gd[2, i+1, j+1],
+                         gd[j+1, k, 0], gd[j+1, k, 1], gd[j+1, k, 2],
+                         gd[j+1, k+1, 0], gd[j+1, k+1, 1], gd[j+1, k+1, 2],
                          gamma)
     u4, v4, w4 = vortexL(x, y, z,
-                         gd[0, i+1, j+1], gd[1, i + 1, j+1], gd[2, i+1, j+1],
-                         gd[0, i+1, j], gd[1, i+1, j], gd[2, i+1, j],
+                         gd[j+1, k+1, 0], gd[j+1, k+1, 1], gd[j+1, k+1, 2],
+                         gd[j, k+1, 0], gd[j, k+1, 1], gd[j, k+1, 2],
                          gamma)
 
     u = u1 + u2 + u3 + u4
@@ -85,10 +90,10 @@ def voring(x, y, z, i, j, gd, gamma=1):
 
     U = np.array((u, v, w))
     Ustar = np.array((ustar, vstar, wstar))
-    return U  # , Ustar
+    return U, Ustar
 
 
-def hshoe2(x, y, z, j, k, gd, gamma=1):
+def hshoe2(x, y, z, k, j, gd, gamma=1):
     """Vorticity Horseshow Element. Computes the velocities induced at a point x,y,z
     by a horseshow Vortex given its grid lower corner coordinates
 
@@ -96,8 +101,8 @@ def hshoe2(x, y, z, j, k, gd, gamma=1):
         x: x coordinate of point
         y: y coordinate of point
         z: z coordinate of point
-        i: specifies i index of grid (gd[i,j])
-        j: specifies j index of grid (gd[i,j])
+        k: specifies k index of grid (gd[k,j])
+        j: specifies j index of grid (gd[k,j])
         gd: grid of geometry
         gamma: Circulation. Defaults to 1 (When we use nondimensional solve).
 
@@ -121,8 +126,14 @@ def hshoe2(x, y, z, j, k, gd, gamma=1):
     v = v1 + v2 + v3
     w = w1 + w2 + w3
 
+    ust = u1 + u3
+    vst = v1 + v3
+    wst = w1 + w3
+
     U = np.array((u, v, w))
-    return U
+    Ustar = np.array((ust, vst, wst))
+
+    return U, Ustar
 
 
 def hshoeSL2(x, y, z, i, j, gd, gamma=1):
@@ -165,5 +176,11 @@ def hshoeSL2(x, y, z, i, j, gd, gamma=1):
     v = v1 + v2 + v3 + v4 + v5
     w = w1 + w2 + w3 + w4 + w5
 
+    ust = u1 + u2 + u4 + u5
+    vst = v1 + v2 + v4 + v5
+    wst = w1 + w2 + w4 + w5
+
     U = np.array((u, v, w))
-    return U
+    Ustar = np.array((ust, vst, wst))
+
+    return U, Ustar
