@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
 
 class Wing:
@@ -77,14 +76,19 @@ class Wing:
         xs = np.empty((self.M, self.N))
         ys = np.empty((self.M, self.N))
         zs = np.empty((self.M, self.N))
-
-        for i in np.arange(0, self.M-1):
-            xpos = (self.Dchord/4)*(self.M-2-i) / \
-                (self.M-2) + (self.Dchord)*(i/(self.M-2))
-            xs[i, :] = self.xoff + xpos
-            ys[i, :] = self.Dspan
-            zs[i, :] = self.groundDist + self.Ddihedr + \
-                self.airfoil.camber_line(xpos)  # camber_line
+        if self.M > 2:
+            for i in np.arange(0, self.M-1):
+                xpos = (self.Dchord/4)*(self.M-2-i) / \
+                    (self.M-2) + (self.Dchord)*(i/(self.M-2))
+                xs[i, :] = self.xoff + xpos
+                ys[i, :] = self.Dspan
+                zs[i, :] = self.groundDist + self.Ddihedr + \
+                    self.airfoil.camber_line(xpos)  # camber_line
+        else:
+            xs[0, :] = self.Dchord/4 + self.xoff
+            ys[0, :] = self.Dspan
+            zs[0, :] = self.groundDist + self.Ddihedr + \
+                self.airfoil.camber_line(self.Dchord/4)  # camber_line
 
         xs[-1, :] = self.Dwake
         ys[-1, :] = self.Dspan
@@ -124,17 +128,19 @@ class Wing:
         if plotting == True:
             self.plotgrid()
 
-    def solveWing(self, alpha0, Umag, dens, solveFun):
-        if self.M > 2:
+    def solveWingHS(self, alpha0, Umag, dens, solveFun):
+        if self.M == 3:
             RHS = np.zeros((self.N-1)*(self.M-2))
             a = np.zeros(((self.N-1)*(self.M-2), (self.N-1)*(self.M-2)))
             b = np.zeros(((self.N-1)*(self.M-2), (self.N-1)*(self.M-2)))
             infMat = np.zeros(((self.N-1)*(self.M-2), (self.N-1)*(self.M-2)))
-        else:
+        elif self.M == 2:
             RHS = np.zeros((self.N-1)*(self.M-1))
             a = np.zeros(((self.N-1)*(self.M-1), (self.N-1)*(self.M-1)))
             b = np.zeros(((self.N-1)*(self.M-1), (self.N-1)*(self.M-1)))
             infMat = np.zeros(((self.N-1)*(self.M-1), (self.N-1)*(self.M-1)))
+        else:
+            print(f"M is {self.M} did you want to do panels?")
         w_ind = np.zeros((self.N-1, 3))
         L_pan = np.zeros((self.N-1))
         D_pan = np.zeros((self.N-1))
@@ -166,7 +172,41 @@ class Wing:
 
         L = np.sum(L_pan)
         D = np.sum(D_pan)
-        return L, D, Gammas, w_ind, L_pan
+        return L, D, Gammas, w_ind
+
+    def solveWingPanels(self, Q, solveFun):
+        a_np = np.zeros(((self.N-1)*(self.M-1), (self.N-1)*(self.M-1)))
+        b_np = np.zeros(((self.N-1)*(self.M-2), (self.N-1)*(self.M-2)))
+        RHS_np = np.zeros((self.N-1)*(self.M-1))
+
+        for i in np.arange(0, (self.N-1)*(self.M-1)):
+            lp, kp = divmod(i, (self.M-1))
+            if kp == self.M-2:
+                RHS_np[i] = 0
+                a_np[i, i] = 1
+                a_np[i, i-1] = -1
+                continue
+            RHS_np[i] = - np.dot(Q, self.control_nj[lp, kp])
+            for j in np.arange(0, (self.N-1)*(self.M-1)):
+                l, k = divmod(j, (self.M-1))
+                if k == self.M-2:
+                    U, Ustar = solveFun(self.controlP[lp, kp, 0],
+                                        self.controlP[lp, kp, 1],
+                                        self.controlP[lp, kp, 2],
+                                        l, k, self.grid)
+                else:
+                    U, Ustar = solveFun(self.controlP[lp, kp, 0],
+                                        self.controlP[lp, kp, 1],
+                                        self.controlP[lp, kp, 2],
+                                        l, k, self.grid)
+
+                    l1, k1 = divmod(i, (self.M-2))
+                    l2, k2 = divmod(j, (self.M-2))
+                    b_np[l1*(self.M-2) - lp + k1, l2 * (self.M-2) - l + k2] =\
+                        np.dot(Ustar, self.control_nj[lp, kp])
+
+                a_np[i, j] = np.dot(U, self.control_nj[lp, kp])
+        return a_np, b_np, RHS_np
 
     def InducedVelocities(self, fun, i, j, gammas):
         Us = 0
